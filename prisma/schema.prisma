@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  FINISHED
+  CANCELED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(USER)
+
+  clients   Client[]
+  services  Service[]
+  contracts Contract[]
+  logs      AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Client {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  contracts Contract[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Category {
+  id       String  @id @default(uuid())
+  name     String
+
+  services Service[]
+}
+
+model Service {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Decimal
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+
+  contracts   Contract[] @relation("ContractServices")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Contract {
+  id          String   @id @default(uuid())
+  title       String
+  status      ContractStatus @default(DRAFT)
+  startDate   DateTime
+  endDate     DateTime?
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+
+  services    Service[] @relation("ContractServices")
+  payments    Payment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([clientId])
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  amount      Decimal
+  status      PaymentStatus @default(PENDING)
+  paidAt      DateTime?
+
+  contractId  String
+  contract    Contract @relation(fields: [contractId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([contractId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  entity    String
+  entityId  String
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
